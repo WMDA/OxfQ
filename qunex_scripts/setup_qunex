@@ -1,0 +1,128 @@
+#! /bin/bash
+
+function usage {
+  echo -e '\n\033[38;5;93mScript to set up a Qunex study. Sets up study from BIDS data\033[0;0m. \n\nUSAGE:'
+  echo -e '\t-s:\tstudy folder \n\t\tPath to study directory. \033[1;31mREQUIRED\033[0;0m'
+  echo -e '\t-i:\tID:\n\t\tParticipant ID. \033[1;31mREQUIRED\033[0;0m'
+  echo -e '\t-r:\traw data \n\t\tPath to raw data. Needs to BIDS'
+  echo -e '\t-C:\tcreate study \n\t\tCreates a qunex folder set up'
+  echo -e '\t-D:\timport data \n\t\tFlag to import data. Needs path to raw data.'
+  echo -e '\t-H:\tcreate hcp session \n\t\tFlag to create hcp session and map files.'
+  echo -e '\t-B:\tcreate batch file \n\t\tFlag to create batch file.'
+  echo -e "Order to be ran: -C, -D, -S, -B, -H"
+  echo -e "Example Usage: setup_qunex -r /home/user/bids_directory -s /home/user/study_folder -i sub-P250 -C\n"
+  exit 0
+}
+
+# module load statements might need to be changed depedning on system
+module load singularity
+module load extension/imaging
+module load qunex-img/0.100.0 
+
+create_study_flag=false
+import_data=false
+create_session=false
+create_batch_flag=false
+setup_hcp_flag=false
+
+while getopts "s:r:i:CDSBHh\?" opt; do
+  case $opt in
+    s) study_folder=${OPTARG};;
+    r) raw_data=${OPTARG};;
+    i) ID=${OPTARG};;
+    C) create_study_flag=true;;
+    D) import_data=true;;
+    S) create_session=true;;
+    B) create_batch_flag=true;;
+    H) setup_hcp_flag=true;;
+    h) usage;;
+    \?) echo -e "\033[1;31mInvalid option. Use -h for help:\033[0;0m$OPTARG" >&2; exit 1;;
+  esac
+done
+
+bids_directory=$(echo $ID | awk '{match($0, /[A-Za-z][0-9]+/, arr); print arr[0]}')
+
+arguments=("ID" "study_folder")
+for arg in "${arguments[@]}"; do
+if [ -z "${!arg}" ]; then
+  echo -e "\033[1;31mError: $arg not set. Use -h for help\033[0;0m"
+  exit 1
+fi
+done
+
+vars=("create_study_flag" "import_data" "setup_hcp_flag" "create_session" "create_batch_flag")
+any_true=false
+
+for var in "${vars[@]}"; do
+  if [ "${!var}" = true ]; then
+    any_true=true
+    break
+  fi
+done
+
+if [ "$any_true" = false ]; then
+  echo -e "\033[1;31mError: No input flag given to qunex. Use -h for help\033[0;0m"
+fi
+
+if $create_study_flag; then
+echo 'Running create study: '
+qunex_container create_study \
+  --studyfolder="${study_folder}/${ID}" \
+  --bind="${study_folder}:${study_folder}" \
+  --container="${QUNEXCONIMAGE}" 
+fi
+
+if $import_data; then
+if [[ ! "$raw_data" ]]; then
+  echo "Path to raw data not given. Please use -r"
+  exit 1
+fi
+
+echo 'Importing data: '
+qunex_container import_bids \
+    --sessionsfolder="${study_folder}/${ID}/sessions" \
+    --inbox="${raw_data}" \
+    --action='copy' \
+    --archive='leave' \
+    --overwrite='no' \
+    --bind="${study_folder}:${study_folder},${raw_data}:${raw_data}" \
+    --container="${QUNEXCONIMAGE}"
+fi
+
+if $create_session; then
+echo 'Creating HCP sessions file: '
+qunex_container create_session_info \
+    --sessionsfolder="${study_folder}/${ID}/sessions" \
+    --sessions="${bids_directory}" \
+    --bind="${study_folder}:${study_folder}" \
+    --mapping="${study_folder}/hcp_mapping_file.txt" \
+    --container="${QUNEX_CONTAINER}" 
+
+fi
+
+if $create_batch_flag; then
+echo 'Creating batch file: '
+qunex_container create_batch \
+    --bind="${study_folder}:${study_folder}" \
+    --sessionsfolder="${study_folder}/${ID}/sessions" \
+    --targetfile="${study_folder}/${ID}/processing/batch.txt" \
+    --paramfile="${study_folder}/hcp_batch.txt" \
+    --sessions="${bids_directory}" \
+    --overwrite="yes" \
+    --sourcefiles="${study_folder}/${ID}/sessions/${bids_directory}/session_hcp.txt" \
+  --container="${QUNEXCONIMAGE}"
+  fi
+
+if $setup_hcp_flag; then
+echo 'Setting up data for HCP processing: '
+qunex_container setup_hcp \
+    --bind="${study_folder}:${study_folder},${raw_data}:${raw_data}" \
+    --sessionsfolder="${study_folder}/${ID}/sessions" \
+    --sessions="${bids_directory}" \
+    --sourcefolder="${study_folder}/${ID}/sessions/${bids_directory}" \
+    --sourcefile="${study_folder}/${ID}/sessions/${bids_directory}/session_hcp.txt" \
+    --existing="add" \
+    --hcp_folderstructure="hcpls" \
+  --container="${QUNEXCONIMAGE}"
+fi
+
