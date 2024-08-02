@@ -1,0 +1,11 @@
+1 => T1w
+2 => T2w
+8 => FM-Magnitude
+9 => FM-Phase
+10 => DWI:dir98_AP_SBRef
+11 => DWI:dir98_PA_SBRef
+12 => boldref:rest_AP
+13 => bold:rest_AP
+14 => DWI:dir98_AP
+15 => DWI:dir98_PA 
+16 => ASL
