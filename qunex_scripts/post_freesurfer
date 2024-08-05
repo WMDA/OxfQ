@@ -1,9 +1,9 @@
 function usage {
-  echo -e '\n\033[38;5;93mScript to run pre-freesurfer HCP pipeline\033[0;0m. \n\nUSAGE:'
+  echo -e '\n\033[38;5;93mScript to run post-freesurfer HCP pipeline\033[0;0m. \n\nUSAGE:'
   echo -e '\t-s:\tstudy folder \n\t\tPath to subject directory. \033[1;31mREQUIRED\033[0;0m'
   echo -e '\t-q:\tQueueName \n\t\tQueueName for the container to run on. \033[1;31mREQUIRED\033[0;0m'
   echo -e '\t-i:\tID \n\t\tSubject ID. \033[1;31mREQUIRED\033[0;0m'
-  echo -e "Example Usage: pre_freesurfer -s /home/user/study_folder -i sub-P250 -q slurm_partion\n"
+  echo -e "Example Usage: post_freesurfer -s /home/user/study_folder -i sub-P250 -q slurm_partion\n"
   exit 0
 }
 
@@ -37,12 +37,11 @@ module load fsl-img/6.0.6.3
 module load workbench-img/1.5.0
 
 # Run Pre Freesurfer
-qunex_container hcp_pre_freesurfer \
+qunex_container hcp_post_freesurfer \
       --bind="${study_folder}:${study_folder}" \
       --sessionsfolder="${participant_folder}/sessions" \
       --batchfile="${participant_folder}/processing/batch.txt" \
       --container="${QUNEXCONIMAGE}" \
-      --hcp_avgrdcmethod="SiemensFieldMap"\
-      --overwrite="yes" \
+      --overwrite="no" \
       --bash_pre="module load qunex-img/0.100.0;module load cuda-img/9.1" \
-      --scheduler="SLURM,time=24:00:00,ntasks=1,cpus-per-task=1,mem-per-cpu=50000,partition=${QueueName},qos=img,gres=gpu:1,jobname=qc-pre_freesurfer_${id}"
+      --scheduler="SLURM,time=24:00:00,ntasks=1,cpus-per-task=1,mem-per-cpu=50000,partition=${QueueName},qos=img,gres=gpu:1,jobname=qc-post_freesurfer_${id}"
