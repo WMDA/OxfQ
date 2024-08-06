@@ -1,0 +1,39 @@
+while getopts "s:q:i:h\?" opt; do
+  case $opt in
+    s) study_folder=${OPTARG};;
+    q) QueueName=${OPTARG};;
+    i) id=${OPTARG};;
+    h) usage;;
+    \?) echo -e "\033[1;31mInvalid option. Use -h for help:\033[0;0m$OPTARG" >&2; exit 1;;
+  esac
+done
+
+arguments=("study_folder" "QueueName" "id")
+for arg in "${arguments[@]}"; do
+if [ -z "${!arg}" ]; then
+  echo -e "\033[1;31mError: $arg not set. Use -h for help\033[0;0m"
+  exit 1
+fi
+done
+
+participant_folder="${study_folder}/${id}"
+
+# These may need to be changed depending on the environment
+module load singularity
+module load extension/imaging
+module load qunex-img/0.100.0 
+module load cuda-img/10.0
+module load hcp-pipelines-img
+module load fsl-img/6.0.6.3
+module load workbench-img/1.5.0
+
+# Functional - Volume
+qunex_container hcp_fmri_volume \
+      --bind="${study_folder}:${study_folder}" \
+      --sessionsfolder="${participant_folder}/sessions" \
+      --batchfile="${participant_folder}/processing/batch.txt" \
+      --container="${QUNEXCONIMAGE}" \
+      --overwrite="yes" \
+      --nv \
+      --bash_pre="module load qunex-img/0.100.0;module load cuda-img/10.0" \
+    --scheduler="SLURM,time=24:00:00,ntasks=1,cpus-per-task=1,mem-per-cpu=50000,partition=${QueueName},qos=img,gres=gpu:1,jobname=dcam_func_vol_${id}"
