@@ -36,7 +36,7 @@ module load hcp-pipelines-img
 module load fsl-img/6.0.6.3
 module load workbench-img/1.5.0
 
-# Run Pre Freesurfer
+# Run post Freesurfer
 qunex_container hcp_post_freesurfer \
       --bind="${study_folder}:${study_folder}" \
       --sessionsfolder="${participant_folder}/sessions" \

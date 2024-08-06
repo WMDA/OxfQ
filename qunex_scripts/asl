@@ -1,9 +1,9 @@
 function usage {
-  echo -e '\n\033[38;5;93mScript to run diffusion HCP pipeline\033[0;0m. \n\nUSAGE:'
+  echo -e '\n\033[38;5;93mScript to run ASL HCP pipeline\033[0;0m. \n\nUSAGE:'
   echo -e '\t-s:\tstudy folder \n\t\tPath to subject directory. \033[1;31mREQUIRED\033[0;0m'
   echo -e '\t-q:\tQueueName \n\t\tQueueName for the container to run on. \033[1;31mREQUIRED\033[0;0m'
   echo -e '\t-i:\tID \n\t\tSubject ID. \033[1;31mREQUIRED\033[0;0m'
-  echo -e "Example Usage: pre_freesurfer -s /home/user/study_folder -i sub-P250 -q slurm_partion\n"
+  echo -e "Example Usage: asl -s /home/user/study_folder -i sub-P250 -q slurm_partion\n"
   exit 0
 }
 
@@ -36,14 +36,12 @@ module load hcp-pipelines-img
 module load fsl-img/6.0.6.3
 module load workbench-img/1.5.0
 
-# Run diffusion pipeline. Currently set to no GPU due to eddy issue on cluster
-qunex_container hcp_diffusion \
+# Run asl pipeline. This currently doesn't work as needs gradient co-effiecient file
+qunex_container hcp_asl \
       --bind="${study_folder}:${study_folder}" \
       --sessionsfolder="${participant_folder}/sessions" \
       --batchfile="${participant_folder}/processing/batch.txt" \
       --container="${QUNEXCONIMAGE}" \
-      --hcp_dwi_nogpu \
-      --overwrite="yes" \
+      --hcp_gdcoeffs=NONE \
       --bash_pre="module load qunex-img/0.100.0;module load cuda-img/10.0" \
-      --hcp_dwi_extraeddyarg="--data_is_shelled" \
     --scheduler="SLURM,time=24:00:00,ntasks=1,cpus-per-task=1,mem-per-cpu=50000,partition=${QueueName},qos=img,gres=gpu:1,jobname=qc-diffusion_${id}"
